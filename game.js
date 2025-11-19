@@ -3,392 +3,16 @@
  * HTML5 Canvas + Vanilla JS
  */
 
+import { Player } from './Player.js';
+import { InputHandler } from './InputHandler.js';
+import { Background } from './Background.js';
+import { Enemy } from './Enemy.js';
+import { Collectible } from './Collectible.js';
+import { Particle } from './Particle.js';
+import AudioController from './audio.js';
+
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 800;
-
-class Particle {
-    constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.size = Math.random() * 3 + 1;
-        this.speedX = Math.random() * 6 - 3;
-        this.speedY = Math.random() * 6 - 3;
-        this.life = 100;
-        this.markedForDeletion = false;
-    }
-
-    update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        this.life -= 2;
-        if (this.life <= 0) this.markedForDeletion = true;
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = this.life / 100;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
-        ctx.globalAlpha = 1.0;
-    }
-}
-
-class Projectile {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.width = 4;
-        this.height = 15;
-        this.speed = 10;
-        this.markedForDeletion = false;
-    }
-
-    update() {
-        this.y -= this.speed;
-        if (this.y < 0) this.markedForDeletion = true;
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = '#0ff';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-    }
-}
-
-class Background {
-    constructor(gameWidth, gameHeight) {
-        this.gameWidth = gameWidth;
-        this.gameHeight = gameHeight;
-        this.stars = [];
-        this.numStars = 100;
-        this.speed = 4;
-        
-        // Initialize stars
-        for (let i = 0; i < this.numStars; i++) {
-            this.stars.push({
-                x: Math.random() * this.gameWidth,
-                y: Math.random() * this.gameHeight,
-                size: Math.random() * 2 + 1,
-                speedMultiplier: Math.random() * 0.5 + 0.5
-            });
-        }
-    }
-
-    update(speedModifier = 1) {
-        this.stars.forEach(star => {
-            star.y += this.speed * star.speedMultiplier * speedModifier;
-            if (star.y > this.gameHeight) {
-                star.y = 0;
-                star.x = Math.random() * this.gameWidth;
-            }
-        });
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = 'white';
-        this.stars.forEach(star => {
-            ctx.fillRect(star.x, star.y, star.size, star.size);
-        });
-    }
-}
-
-class Obstacle {
-    constructor(gameWidth, speedModifier = 1) {
-        this.gameWidth = gameWidth;
-        this.width = 50;
-        this.height = 50;
-        this.x = Math.random() * (this.gameWidth - this.width);
-        this.y = -this.height;
-        this.speed = 5 * speedModifier;
-        this.markedForDeletion = false;
-        this.color = '#888'; // Grey asteroid color
-    }
-
-    update() {
-        this.y += this.speed;
-        if (this.y > CANVAS_HEIGHT) {
-            this.markedForDeletion = true;
-        }
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = this.color;
-        // Simple blocky asteroid
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        
-        // Add some detail
-        ctx.fillStyle = '#666';
-        ctx.fillRect(this.x + 10, this.y + 10, 10, 10);
-        ctx.fillRect(this.x + 30, this.y + 30, 10, 10);
-    }
-}
-
-class Collectible {
-    constructor(gameWidth, speedModifier = 1) {
-        this.gameWidth = gameWidth;
-        this.width = 30;
-        this.height = 30;
-        this.x = Math.random() * (this.gameWidth - this.width);
-        this.y = -this.height;
-        this.speed = 3 * speedModifier;
-        this.markedForDeletion = false;
-        
-        // Determine type
-        const rand = Math.random();
-        if (rand < 0.6) {
-            this.type = 'coin';
-            this.color = 'gold';
-        } else if (rand < 0.75) {
-            this.type = 'boost';
-            this.color = 'cyan';
-        } else if (rand < 0.85) {
-            this.type = 'life';
-            this.color = 'magenta';
-        } else if (rand < 0.95) {
-            this.type = 'shield';
-            this.color = 'blue';
-        } else {
-            this.type = 'magnet';
-            this.color = 'lime';
-        }
-    }
-
-    update() {
-        this.y += this.speed;
-        if (this.y > CANVAS_HEIGHT) {
-            this.markedForDeletion = true;
-        }
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = this.color;
-        if (this.type === 'coin') {
-            // Circle-ish shape for coin
-            ctx.fillRect(this.x + 5, this.y, 20, 30);
-            ctx.fillRect(this.x, this.y + 5, 30, 20);
-            ctx.fillStyle = '#FFD700'; // Lighter center
-            ctx.fillRect(this.x + 10, this.y + 10, 10, 10);
-        } else if (this.type === 'boost') {
-            // Arrow up shape
-            ctx.fillRect(this.x + 10, this.y, 10, 30);
-            ctx.fillRect(this.x, this.y + 10, 30, 10);
-        } else if (this.type === 'life') {
-            // Heart-ish shape
-            ctx.fillStyle = 'red';
-            ctx.fillRect(this.x, this.y + 5, 30, 20);
-            ctx.fillRect(this.x + 5, this.y, 10, 10);
-            ctx.fillRect(this.x + 15, this.y, 10, 10);
-            ctx.fillRect(this.x + 10, this.y + 20, 10, 10);
-        } else if (this.type === 'shield') {
-            // Shield shape
-            ctx.fillRect(this.x + 5, this.y, 20, 20);
-            ctx.fillRect(this.x + 10, this.y + 20, 10, 10);
-        } else if (this.type === 'magnet') {
-            // U shape
-            ctx.fillRect(this.x, this.y, 8, 25);
-            ctx.fillRect(this.x + 22, this.y, 8, 25);
-            ctx.fillRect(this.x, this.y + 20, 30, 8);
-        }
-    }
-}
-
-class Player {
-    constructor(game) {
-        this.gameWidth = game.canvas.width;
-        this.gameHeight = game.canvas.height;
-        this.width = 40;
-        this.height = 40;
-        this.x = this.gameWidth / 2 - this.width / 2;
-        this.y = this.gameHeight - this.height - 20;
-        this.speed = 0;
-        this.maxSpeed = 7;
-        this.dashSpeed = 15;
-        this.isDashing = false;
-        this.dashTimer = 0;
-        this.dashDuration = 150; // ms
-        this.dashCooldown = 0;
-        this.dashCooldownTime = 1000;
-        
-        this.hasShield = false;
-        this.hasMagnet = false;
-        this.magnetTimer = 0;
-        this.magnetDuration = 5000; // 5s
-
-        this.projectiles = [];
-        this.game = game;
-        
-        window.addEventListener('keydown', (e) => {
-            if ((e.key === ' ' || e.key === 'ArrowUp') && !this.game.gameOver) {
-                this.shoot();
-            }
-            if (e.key === 'Shift' && !this.game.gameOver) {
-                this.dash();
-            }
-        });
-    }
-
-    update(input, deltaTime) {
-        // Movement logic
-        let currentSpeed = this.maxSpeed;
-        
-        // Dash Logic
-        if (this.dashCooldown > 0) this.dashCooldown -= deltaTime;
-        
-        if (this.isDashing) {
-            currentSpeed = this.dashSpeed;
-            this.dashTimer -= deltaTime;
-            if (this.dashTimer <= 0) {
-                this.isDashing = false;
-                this.dashCooldown = this.dashCooldownTime;
-            }
-        }
-        
-        if (this.hasMagnet) {
-            this.magnetTimer -= deltaTime;
-            if (this.magnetTimer <= 0) {
-                this.hasMagnet = false;
-            }
-        }
-
-        if (input.keys.left) {
-            this.speed = -currentSpeed;
-        } else if (input.keys.right) {
-            this.speed = currentSpeed;
-        } else {
-            this.speed = 0;
-        }
-
-        this.x += this.speed;
-
-        // Boundaries
-        if (this.x < 0) this.x = 0;
-        if (this.x > this.gameWidth - this.width) this.x = this.gameWidth - this.width;
-        
-        // Projectiles
-        this.projectiles.forEach(projectile => projectile.update());
-        this.projectiles = this.projectiles.filter(projectile => !projectile.markedForDeletion);
-    }
-
-    dash() {
-        if (this.dashCooldown <= 0 && !this.isDashing) {
-            this.isDashing = true;
-            this.dashTimer = this.dashDuration;
-            // Add particles
-            this.game.createParticles(this.x + this.width/2, this.y + this.height, 'cyan', 10);
-        }
-    }
-
-    shoot() {
-        this.projectiles.push(new Projectile(this.x + this.width / 2 - 2, this.y));
-        this.game.audio.shoot();
-    }
-
-    draw(ctx) {
-        // Draw Projectiles
-        this.projectiles.forEach(projectile => projectile.draw(ctx));
-
-        // Simple pixelated ship design
-        ctx.fillStyle = 'white';
-        
-        // Main body
-        ctx.fillRect(this.x + 10, this.y, 20, 30); // Center fuselage
-        ctx.fillRect(this.x, this.y + 20, 10, 20); // Left wing
-        ctx.fillRect(this.x + 30, this.y + 20, 10, 20); // Right wing
-        
-        // Engine flame
-        if (this.isDashing) {
-            ctx.fillStyle = 'cyan';
-            ctx.fillRect(this.x + 12, this.y + 30, 16, 15);
-        } else {
-            ctx.fillStyle = 'orange';
-            ctx.fillRect(this.x + 14, this.y + 30, 12, 5);
-            ctx.fillStyle = 'red';
-            ctx.fillRect(this.x + 16, this.y + 35, 8, 5);
-        }
-
-        // Shield effect
-        if (this.hasShield) {
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(this.x + this.width/2, this.y + this.height/2, 35, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        
-        // Magnet effect
-        if (this.hasMagnet) {
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(this.x + this.width/2, this.y + this.height/2, 45 + Math.sin(Date.now() / 100) * 5, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-    }
-}
-
-class InputHandler {
-    constructor() {
-        this.keys = {
-            left: false,
-            right: false,
-            enter: false,
-            space: false
-        };
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') this.keys.left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd') this.keys.right = true;
-            if (e.key === 'Enter') this.keys.enter = true;
-            if (e.key === ' ') this.keys.space = true;
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') this.keys.left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd') this.keys.right = false;
-            if (e.key === 'Enter') this.keys.enter = false;
-            if (e.key === ' ') this.keys.space = false;
-        });
-
-        // Touch/Mouse Controls for Buttons
-        const setupBtn = (id, key) => {
-            const btn = document.getElementById(id);
-            if (!btn) return;
-            
-            const press = (e) => { e.preventDefault(); this.keys[key] = true; };
-            const release = (e) => { e.preventDefault(); this.keys[key] = false; };
-
-            btn.addEventListener('mousedown', press);
-            btn.addEventListener('touchstart', press);
-            btn.addEventListener('mouseup', release);
-            btn.addEventListener('touchend', release);
-            btn.addEventListener('mouseleave', release);
-        };
-
-        setupBtn('btn-left', 'left');
-        setupBtn('btn-right', 'right');
-        
-        // Special handling for Shoot/Dash/Enter buttons triggers
-        const btnShoot = document.getElementById('btn-shoot');
-        if (btnShoot) {
-            const trigger = (e) => {
-                e.preventDefault();
-                // Dispatch space keydown event manually or handle directly
-                window.dispatchEvent(new KeyboardEvent('keydown', { 'key': ' ' }));
-            };
-            btnShoot.addEventListener('mousedown', trigger);
-            btnShoot.addEventListener('touchstart', trigger);
-        }
-
-        const btnDash = document.getElementById('btn-dash');
-        if (btnDash) {
-            const trigger = (e) => {
-                e.preventDefault();
-                 window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Shift' }));
-            };
-            btnDash.addEventListener('mousedown', trigger);
-            btnDash.addEventListener('touchstart', trigger);
-        }
-    }
-}
 
 class Game {
     constructor(canvasId) {
@@ -398,10 +22,11 @@ class Game {
         this.canvas.height = CANVAS_HEIGHT;
         
         this.input = new InputHandler();
+        this.audio = new AudioController();
         this.player = new Player(this);
         this.background = new Background(this.canvas.width, this.canvas.height);
         
-        this.obstacles = [];
+        this.obstacles = []; // Now contains Enemy instances
         this.obstacleTimer = 0;
         this.obstacleInterval = 1000; // ms
 
@@ -410,9 +35,11 @@ class Game {
         this.collectibleInterval = 2000; // ms
         
         this.particles = [];
+        this.enemyProjectiles = [];
 
         this.lastTime = 0;
         this.gameOver = false;
+        this.paused = false;
         this.score = 0;
         this.lives = 3;
         this.gameTime = 0;
@@ -422,8 +49,22 @@ class Game {
         // Visual Juice
         this.shakeTimer = 0;
         this.shakeIntensity = 0;
+        this.floatingTexts = [];
 
-        this.audio = new AudioController();
+        // Game Progression
+        this.bossSpawned = false;
+        this.lastBossScore = 0;
+        this.comboCount = 0;
+        this.comboTimer = 0;
+
+        // Settings UI
+        const settingsBtn = document.getElementById('settings-btn');
+        settingsBtn.addEventListener('click', () => {
+            const muted = this.audio.toggleMute();
+            settingsBtn.textContent = muted ? '🔇' : '🔊';
+            // Prevent focus so spacebar doesn't trigger button
+            settingsBtn.blur();
+        });
     }
 
     start() {
@@ -445,13 +86,31 @@ class Game {
         }
     }
 
+    createFloatingText(text, x, y, color = 'white') {
+        this.floatingTexts.push({
+            text, x, y, color,
+            life: 60,
+            dy: -1
+        });
+    }
+
     screenShake(intensity, duration) {
         this.shakeIntensity = intensity;
         this.shakeTimer = duration;
     }
 
+    togglePause() {
+        this.paused = !this.paused;
+    }
+
     update(deltaTime) {
-        if (this.gameOver) return;
+        // Handle Pause
+        if (this.input.keys.escape) {
+            this.input.keys.escape = false; // Consume key press
+            this.togglePause();
+        }
+
+        if (this.gameOver || this.paused) return;
 
         this.gameTime += deltaTime;
         // Increase difficulty every 10 seconds
@@ -463,15 +122,37 @@ class Game {
             if (this.shakeTimer <= 0) this.shakeIntensity = 0;
         }
 
+        // Combo Timer
+        if (this.comboCount > 0) {
+            this.comboTimer -= deltaTime;
+            if (this.comboTimer <= 0) this.comboCount = 0;
+        }
+
         this.background.update(this.speedModifier);
         this.player.update(this.input, deltaTime);
 
-        // Obstacle Spawning
-        if (this.obstacleTimer > this.obstacleInterval) {
-            this.obstacles.push(new Obstacle(this.canvas.width, this.speedModifier));
-            this.obstacleTimer = 0;
-        } else {
-            this.obstacleTimer += deltaTime;
+        // Enemy Spawning Logic
+        if (!this.bossSpawned) {
+            // Check for Boss Spawn
+            if (this.score - this.lastBossScore >= 1000 && this.score > 0) {
+                this.obstacles.push(new Enemy(this.canvas.width, this.speedModifier, 'boss'));
+                this.bossSpawned = true;
+                this.lastBossScore = this.score;
+                this.createFloatingText("BOSS APPROACHING!", this.canvas.width/2 - 100, 200, 'red');
+            } else {
+                // Normal Spawning
+                if (this.obstacleTimer > this.obstacleInterval) {
+                    const rand = Math.random();
+                    let type = 'asteroid';
+                    if (rand > 0.8) type = 'chaser';
+                    else if (rand > 0.9) type = 'shooter';
+                    
+                    this.obstacles.push(new Enemy(this.canvas.width, this.speedModifier, type));
+                    this.obstacleTimer = 0;
+                } else {
+                    this.obstacleTimer += deltaTime;
+                }
+            }
         }
 
         // Collectible Spawning
@@ -486,13 +167,39 @@ class Game {
         this.particles.forEach(particle => particle.update());
         this.particles = this.particles.filter(particle => !particle.markedForDeletion);
 
+        // Floating Texts
+        this.floatingTexts.forEach(ft => {
+            ft.y += ft.dy;
+            ft.life--;
+        });
+        this.floatingTexts = this.floatingTexts.filter(ft => ft.life > 0);
+
+        // Enemy Projectiles
+        this.enemyProjectiles.forEach(proj => {
+            proj.update();
+            if (this.checkCollision(proj, this.player)) {
+                proj.markedForDeletion = true;
+                if (!this.player.hasShield && !this.player.isDashing) {
+                    this.lives--;
+                    this.screenShake(10, 200);
+                    this.createParticles(this.player.x, this.player.y, 'red', 10);
+                    if (this.lives <= 0) this.gameOver = true;
+                } else if (this.player.hasShield) {
+                    this.player.hasShield = false;
+                    this.audio.explosion();
+                }
+            }
+        });
+        this.enemyProjectiles = this.enemyProjectiles.filter(p => !p.markedForDeletion);
+
         // Updates and Collision Checks
         this.obstacles.forEach(obstacle => {
-            obstacle.update();
+            obstacle.update(this.player, this.enemyProjectiles);
             
             // Check collision with Player
             if (this.checkCollision(this.player, obstacle)) {
-                obstacle.markedForDeletion = true;
+                if (obstacle.type !== 'boss') obstacle.markedForDeletion = true;
+                
                 if (this.player.hasShield) {
                     this.player.hasShield = false;
                     this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 'cyan', 20);
@@ -517,12 +224,33 @@ class Game {
             // Check collision with Projectiles
             this.player.projectiles.forEach(projectile => {
                 if (this.checkCollision(projectile, obstacle)) {
-                    obstacle.markedForDeletion = true;
                     projectile.markedForDeletion = true;
-                    this.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, '#888', 10);
-                    this.screenShake(2, 50);
-                    this.score += 5;
-                    this.audio.explosion();
+                    obstacle.health--;
+                    
+                    this.createParticles(projectile.x, projectile.y, 'orange', 5);
+
+                    if (obstacle.health <= 0) {
+                        obstacle.markedForDeletion = true;
+                        this.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, obstacle.color, 15);
+                        this.screenShake(5, 100);
+                        this.audio.explosion();
+                        
+                        // Combo Logic
+                        this.comboCount++;
+                        this.comboTimer = 2000; // 2s to keep combo
+                        const multiplier = Math.min(this.comboCount, 5); // Max 5x
+                        const points = 10 * multiplier;
+                        
+                        this.score += points;
+                        this.createFloatingText(`+${points}`, obstacle.x, obstacle.y);
+                        if (multiplier > 1) this.createFloatingText(`${multiplier}x COMBO!`, obstacle.x, obstacle.y - 20, 'yellow');
+
+                        if (obstacle.type === 'boss') {
+                            this.bossSpawned = false;
+                            this.score += 500;
+                            this.createFloatingText("+500 BOSS DEFEATED!", obstacle.x, obstacle.y, 'gold');
+                        }
+                    }
                 }
             });
         });
@@ -549,19 +277,24 @@ class Game {
                 if (collectible.type === 'coin') {
                     this.score += 10;
                     this.audio.collectCoin();
+                    this.createFloatingText("+10", collectible.x, collectible.y, 'gold');
                 } else if (collectible.type === 'boost') {
                     this.score += 50; // Boost gives points for now
                     this.audio.powerup();
+                    this.createFloatingText("BOOST!", collectible.x, collectible.y, 'cyan');
                 } else if (collectible.type === 'life') {
                     this.lives++;
                     this.audio.powerup();
+                    this.createFloatingText("1UP", collectible.x, collectible.y, 'magenta');
                 } else if (collectible.type === 'shield') {
                     this.player.hasShield = true;
                     this.audio.powerup();
+                    this.createFloatingText("SHIELD", collectible.x, collectible.y, 'blue');
                 } else if (collectible.type === 'magnet') {
                     this.player.hasMagnet = true;
                     this.player.magnetTimer = this.player.magnetDuration;
                     this.audio.powerup();
+                    this.createFloatingText("MAGNET", collectible.x, collectible.y, 'lime');
                 }
             }
         });
@@ -586,10 +319,18 @@ class Game {
         this.obstacles.forEach(obstacle => obstacle.draw(this.ctx));
         this.collectibles.forEach(collectible => collectible.draw(this.ctx));
         this.particles.forEach(particle => particle.draw(this.ctx));
+        this.enemyProjectiles.forEach(p => p.draw(this.ctx));
         
         if (!this.gameOver) {
             this.player.draw(this.ctx);
         }
+
+        // Floating Texts
+        this.floatingTexts.forEach(ft => {
+            this.ctx.fillStyle = ft.color;
+            this.ctx.font = 'bold 16px Courier New';
+            this.ctx.fillText(ft.text, ft.x, ft.y);
+        });
 
         // HUD
         this.ctx.fillStyle = 'white';
@@ -598,6 +339,20 @@ class Game {
         this.ctx.fillText('SCORE: ' + this.score, 20, 30);
         this.ctx.fillText('HI: ' + this.highScore, 200, 30);
         this.ctx.fillText('LIVES: ' + '♥'.repeat(this.lives), 20, 60);
+        
+        if (this.comboCount > 1) {
+            this.ctx.fillStyle = 'yellow';
+            this.ctx.fillText(`COMBO x${Math.min(this.comboCount, 5)}`, 20, 90);
+        }
+
+        if (this.paused) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '40px Courier New';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+        }
 
         if (this.gameOver) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -622,11 +377,15 @@ class Game {
         this.obstacles = [];
         this.collectibles = [];
         this.particles = [];
+        this.enemyProjectiles = [];
         this.score = 0;
         this.lives = 3;
         this.gameOver = false;
         this.gameTime = 0;
         this.speedModifier = 1;
+        this.bossSpawned = false;
+        this.lastBossScore = 0;
+        this.comboCount = 0;
         this.lastTime = performance.now();
         
         // Reset player pos

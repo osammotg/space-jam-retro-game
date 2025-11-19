@@ -2,9 +2,21 @@ class AudioController {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterVolume = 0.3;
+        this.muted = false;
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) {
+            this.ctx.suspend();
+        } else {
+            this.ctx.resume();
+        }
+        return this.muted;
     }
 
     playTone(frequency, type, duration) {
+        if (this.muted) return;
         if (this.ctx.state === 'suspended') this.ctx.resume();
         
         const osc = this.ctx.createOscillator();
@@ -46,3 +58,5 @@ class AudioController {
         setTimeout(() => this.playTone(200, 'sawtooth', 0.5), 400);
     }
 }
+
+export default AudioController;
