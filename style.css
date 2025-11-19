@@ -1,0 +1,67 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #0f0f0f;
+    display: flex;
+    flex-direction: column; /* Stack canvas and controls */
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+    color: white;
+}
+
+#game-container {
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    border: 4px solid #333;
+}
+
+canvas {
+    display: block;
+    background-color: #000;
+    image-rendering: pixelated; /* Key for retro look */
+}
+
+/* Mobile Controls */
+#controls {
+    display: none; /* Hidden by default, shown on small screens via JS or media query */
+    margin-top: 20px;
+    width: 100%;
+    max-width: 600px;
+    justify-content: space-around;
+    touch-action: manipulation; /* Prevent zooming */
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 18px;
+    user-select: none;
+    width: 80px;
+    text-align: center;
+}
+
+.control-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 800px) {
+    #controls {
+        display: flex;
+    }
+    /* Adjust canvas for mobile */
+    canvas {
+        width: 100%;
+        height: auto;
+        max-height: 70vh;
+    }
+    #game-container {
+        width: 95%;
+    }
+}
